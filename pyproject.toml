@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "dynamodb-generic-capture-trigger"
+version = "0.1.0"
+description = "Capturador genérico de dados tendo como origem o DynamoDB e destino Kafka"
+authors = ["Rafael Negrão <rafael.negrao@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    { include = "send_to_kafka_function.py", from = "src" },
+    { include = "kafka_utils", from = "src" }
+]
+
+[tool.pytest.init_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.poetry.dev-dependencies]
+localstack-client = "2.3"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+boto3 = "^1.23.5"
+kafka-python = "2.0.2"
+retry = "0.9.2"
+pydash = "7.0.4"
+
+[tool.poetry.group.dev.dependencies]
+pytest-cov = "^4.0.0"
+pytest = "^7.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

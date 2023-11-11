@@ -1,0 +1,74 @@
+version: '3'
+
+volumes:
+  localstack_data:
+
+networks:
+  localstack-network:
+    driver: bridge
+
+services:
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.1.arm64
+    container_name: zookeeper
+    ports:
+      - 2181:2181
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - localstack-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.1.arm64
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - 9091:9091
+      - 9092:9092
+      - 9093:9093
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_EXTERNAL_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9091,PLAINTEXT_HOST://localhost:9092,PLAINTEXT_EXTERNAL_HOST://${DOCKER_HOST_IP:-127.0.0.1}:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - localstack-network
+
+  kowl:
+    image: quay.io/cloudhut/kowl:master-59f68da
+    restart: on-failure
+    volumes:
+      - ./kowl_conf/config.yml:/etc/kowl/config.yml
+    ports:
+      - 8080:8080
+    entrypoint: ./kowl --config.filepath=/etc/kowl/config.yml
+    depends_on:
+      - kafka
+    networks:
+      - localstack-network
+
+  localstack:
+    container_name: localstack
+    hostname: localstack
+    image: localstack/localstack
+    ports:
+      - "4510-4583:4510-4583"
+      - "53:53"
+      - "53:53/udp"
+    environment:
+      - SERVICES=s3,lambda,sqs,apigateway,dynamodb,dynamodbstreams
+      - AWS_DEFAULT_REGION=us-east-1
+      - EDGE_PORT=4566
+      - DEBUG=1
+      - DISABLE_CORS_CHECKS=1
+    volumes:
+      - "${TEMPDIR:-/tmp/localstack}:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - localstack-network
